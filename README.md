@@ -19,6 +19,21 @@ At Roamler, we faced a common yet daunting challenge: modernizing our legacy mic
 - **Report Generation**: Create detailed reports on package usage and project dependencies.
 - **Anomaly Detection**: Identify potential issues in package versioning and usage.
 
+## 🛠️ How It Works
+PackageAnalyzer leverages the power of the NuGet API to fetch comprehensive package information directly from NuGet servers. Here's what you need to know:
+
+* Dependency Graph
+    The tool generates a detailed dependency graph of your solution, including both direct and transitive dependencies
+
+* Caching Mechanism
+    To optimize performance and reduce unnecessary API calls, PackageAnalyzer caches project information in an "AnalysisResult" directory located in the same folder as the executable.
+
+* Fresh Data
+
+    If you need to ensure you're working with the most up-to-date information, simply remove the cache by deleting the "AnalysisResult" directory before running the analysis.
+
+This approach allows PackageAnalyzer to provide fast, accurate results while minimizing network usage and API requests.
+
 ## 📊 Report Types
 
 1. **Packages by Project**
