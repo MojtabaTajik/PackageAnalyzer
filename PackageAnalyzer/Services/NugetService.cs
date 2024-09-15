@@ -3,13 +3,31 @@ using NuGet.Frameworks;
 using NuGet.Packaging.Core;
 using NuGet.Protocol;
 using NuGet.Protocol.Core.Types;
+using NuGet.Versioning;
 using PackageAnalyzer.Models;
 
 namespace PackageAnalyzer.Services;
 
 public static class NugetService
 {
-    public static async Task<List<PackageInfo>> GetTransitiveDependencies(
+    public static async Task FillTransitiveDependencies(ProjectInfo projectInfo)
+    {
+        foreach (var package in projectInfo.Packages)
+        {
+            var packageIdentity = new PackageIdentity(package.Name, NuGetVersion.Parse(package.Version));
+            var framework = NuGetFramework.ParseFolder(package.TargetFramework);
+
+            var processedPackages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            // Assign transitive dependencies directly
+            package.TransitiveDependencies = await GetTransitiveDependencies(
+                packageIdentity,
+                framework,
+                processedPackages);
+        }
+    }
+    
+    private static async Task<List<PackageInfo>> GetTransitiveDependencies(
         PackageIdentity package,
         NuGetFramework framework,
         HashSet<string> processedPackages)

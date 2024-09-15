@@ -1,10 +1,10 @@
 ﻿using PackageAnalyzer.Models;
 
-namespace PackageAnalyzer.Services;
+namespace PackageAnalyzer.Utils;
 
-public static class PackageConfigSearcher
+public static class SearchUtils
 {
-    public static List<PackageConfigInfo> GetPackageConfigFiles(string solutionPath)
+    public static List<PackageConfigInfo> SearchForConfigFiles(string solutionPath)
     {
         if (!Directory.Exists(solutionPath))
         {

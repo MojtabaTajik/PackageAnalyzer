@@ -5,7 +5,7 @@ namespace PackageAnalyzer.Utils;
 
 public static class ProjectInfoUtils
 {
-    public static async Task<List<ProjectInfo>> GetProjectInfos(List<PackageConfigInfo> packageConfigFiles)
+    public static async Task<List<ProjectInfo>> GetProjectInfo(List<PackageConfigInfo> packageConfigFiles)
     {
         var projectsInfo = new List<ProjectInfo>();
         foreach (var packageFile in packageConfigFiles)

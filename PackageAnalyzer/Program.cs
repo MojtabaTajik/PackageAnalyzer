@@ -1,8 +1,4 @@
-﻿using System.Text.Json;
-using NuGet.Frameworks;
-using NuGet.Packaging.Core;
-using NuGet.Versioning;
-using PackageAnalyzer.Models;
+﻿using PackageAnalyzer.Models;
 using PackageAnalyzer.Services;
 using PackageAnalyzer.Utils;
 using Spectre.Console;
@@ -18,43 +14,23 @@ try
         return;
     }
 
-    var packageConfigFiles = PackageConfigSearcher.GetPackageConfigFiles(solutionPath);
+    var packageConfigFiles = SearchUtils.SearchForConfigFiles(solutionPath);
     if (!packageConfigFiles.Any())
     {
         Console.WriteLine("No package.config files found.");
         return;
     }
-    var projectsInfo = await ProjectInfoUtils.GetProjectInfos(packageConfigFiles);
+    var projectsInfo = await ProjectInfoUtils.GetProjectInfo(packageConfigFiles);
 
     foreach (var project in projectsInfo)
     {
-        var tempProject = project;
-        var cacheExists = AnalysisCache.CacheExists(tempProject.Name);
-        if (cacheExists)
+        var cacheExists = AnalysisCache.TryGet(project.Name, out ProjectInfo? tempProject);
+        if (!cacheExists)
         {
-            Console.WriteLine($"Analysis for project {tempProject.Name} already exists. Loading...");
-            var cachedAnalysis = await AnalysisCache.GetAnalysis(tempProject.Name);
-            tempProject = JsonSerializer.Deserialize<ProjectInfo>(cachedAnalysis);
-        }
-        else
-        {
-            Console.WriteLine($"Processing project: {tempProject.Name}");
-
-            foreach (var package in tempProject.Packages)
-            {
-                var packageIdentity = new PackageIdentity(package.Name, NuGetVersion.Parse(package.Version));
-                var framework = NuGetFramework.ParseFolder(package.TargetFramework);
-
-                var processedPackages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-                // Assign transitive dependencies directly
-                package.TransitiveDependencies = await NugetService.GetTransitiveDependencies(
-                    packageIdentity,
-                    framework,
-                    processedPackages);
-            }
-
-            await AnalysisCache.StoreAnalysis(tempProject.Name, tempProject);
+            Console.WriteLine($"Processing project: {project.Name}");
+            await NugetService.FillTransitiveDependencies(project);
+            await AnalysisCache.Store(project.Name, project);
+            tempProject = project;
         }
 
         var packageTree = ReportUtils.BuildPackageTree(tempProject);
