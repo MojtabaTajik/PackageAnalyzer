@@ -12,12 +12,6 @@ try
     Console.WriteLine("Enter solution path:");
     string? solutionPath = Console.ReadLine();
 
-    if (string.IsNullOrEmpty(solutionPath))
-    {
-        Console.WriteLine("Solution path is required.");
-        return;
-    }
-
     if (!Directory.Exists(solutionPath))
     {
         Console.WriteLine("Solution path does not exist.");
@@ -25,6 +19,11 @@ try
     }
 
     var packageConfigFiles = PackageConfigSearcher.GetPackageConfigFiles(solutionPath);
+    if (!packageConfigFiles.Any())
+    {
+        Console.WriteLine("No package.config files found.");
+        return;
+    }
     var projectsInfo = await ProjectInfoUtils.GetProjectInfos(packageConfigFiles);
 
     foreach (var project in projectsInfo)
