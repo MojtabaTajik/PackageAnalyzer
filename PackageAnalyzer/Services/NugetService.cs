@@ -4,7 +4,9 @@ using NuGet.Packaging.Core;
 using NuGet.Protocol;
 using NuGet.Protocol.Core.Types;
 using NuGet.Versioning;
+using PackageAnalyzer.Helpers;
 using PackageAnalyzer.Models;
+using Spectre.Console;
 
 namespace PackageAnalyzer.Services;
 
@@ -12,6 +14,9 @@ public static class NugetService
 {
     public static async Task FillTransitiveDependencies(ProjectInfo projectInfo)
     {
+        if (projectInfo.Packages == null)
+            return;
+        
         foreach (var package in projectInfo.Packages)
         {
             var packageIdentity = new PackageIdentity(package.Name, NuGetVersion.Parse(package.Version));
@@ -73,8 +78,9 @@ public static class NugetService
 
                 if (bestVersion == null)
                 {
-                    Console.WriteLine(
-                        $"Could not find a matching version for dependency {dependency.Id} with version range {dependency.VersionRange?.ToNormalizedString() ?? "Unknown"}");
+                    var errorMessage =
+                        $"Could not find a matching version for dependency {dependency.Id} with version range {dependency.VersionRange?.ToNormalizedString() ?? "Unknown"}";
+                    AnsiConsole.MarkupLine(errorMessage.ErrorStyle());
                     continue;
                 }
 

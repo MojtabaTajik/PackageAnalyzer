@@ -1,24 +1,25 @@
-﻿using PackageAnalyzer.Models;
+﻿using PackageAnalyzer.Helpers;
+using PackageAnalyzer.Models;
 using PackageAnalyzer.Services;
 using PackageAnalyzer.Utils;
 using Spectre.Console;
 
 try
 {
-    AnsiConsole.MarkupLine(InfoStyle("Welcome to Package Analyzer!"));
-    AnsiConsole.MarkupLine(PromptStyle("Please provide the path to the solution you want to analyze:"));
+    AnsiConsole.MarkupLine("Welcome to Package Analyzer!".InfoStyle());
+    AnsiConsole.MarkupLine("Please provide the path to the solution you want to analyze:".PromptStyle());
     string? solutionPath = Console.ReadLine();
 
     if (!Directory.Exists(solutionPath))
     {
-        AnsiConsole.MarkupLine(ErrorStyle("Provided path is invalid."));
+        AnsiConsole.MarkupLine("Provided path is invalid.".ErrorStyle());
         return;
     }
 
     var packageConfigFiles = SearchUtils.SearchForConfigFiles(solutionPath);
     if (!packageConfigFiles.Any())
     {
-        AnsiConsole.MarkupLine(ErrorStyle("No package config files found in the provided path."));
+        AnsiConsole.MarkupLine("No package config files found in the provided path.".ErrorStyle());
         return;
     }
     var projectsInfo = await ProjectInfoUtils.GetProjectInfo(packageConfigFiles);
@@ -34,7 +35,7 @@ try
         }
     }
     
-    AnsiConsole.MarkupLine(InfoStyle("Select the report you want to generate:"));
+    AnsiConsole.MarkupLine("Select the report you want to generate:".InfoStyle());
     
     var exitApp = false;
     while (exitApp == false)
@@ -55,25 +56,22 @@ try
                 exitApp = true;
                 break;
             default:
-                AnsiConsole.MarkupLine(ErrorStyle("Invalid choice, please try again."));
+                AnsiConsole.MarkupLine("Invalid choice, please try again.".ErrorStyle());
                 break;
         }
     }
 }
 catch (Exception ex)
 {
-    AnsiConsole.MarkupLine(ErrorStyle(ex.Message));
+    AnsiConsole.MarkupLine(ex.Message.ErrorStyle());
 }
 
 string? AskForReportChoice()
 {
-    AnsiConsole.MarkupLine($"{PromptStyle("1.")} Packages by project report");
-    AnsiConsole.MarkupLine($"{PromptStyle("2.")} Project by packages report");
-    AnsiConsole.MarkupLine($"{PromptStyle("3.")} Anomalies report");
-    AnsiConsole.MarkupLine($"{ErrorStyle("X.")} Exit");
+    AnsiConsole.MarkupLine($"{"1".PromptStyle()} Packages by project report");
+    AnsiConsole.MarkupLine($"{"2".PromptStyle()}  Project by packages report");
+    AnsiConsole.MarkupLine($"{"3".PromptStyle()} Anomalies report");
+    AnsiConsole.MarkupLine($"{"X".PromptStyle()}  Exit");
     return Console.ReadLine();
 }
 
-string PromptStyle(string text) => $"[bold orange1]{text}[/]";
-string ErrorStyle(string message) => $"[bold red]{message}[/]";
-string InfoStyle(string message) => $"[bold yellow2]{message}[/]";
