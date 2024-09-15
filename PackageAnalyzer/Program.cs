@@ -1,7 +1,6 @@
 ﻿using PackageAnalyzer.Models;
 using PackageAnalyzer.Services;
 using PackageAnalyzer.Utils;
-using Spectre.Console;
 
 try
 {
@@ -30,12 +29,10 @@ try
             Console.WriteLine($"Processing project: {project.Name}");
             await NugetService.FillTransitiveDependencies(project);
             await AnalysisCache.Store(project.Name, project);
-            tempProject = project;
         }
-
-        var packageTree = ReportUtils.BuildPackageTree(tempProject);
-        AnsiConsole.Write(packageTree);
     }
+    
+    ReportUtils.PrintAnomaliesReport(projectsInfo);
 }
 catch (Exception ex)
 {
