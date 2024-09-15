@@ -1,10 +1,10 @@
-﻿using System.Reflection;
-using System.Text.Json;
+﻿using System.Text.Json;
 using NuGet.Frameworks;
 using NuGet.Packaging.Core;
 using NuGet.Versioning;
 using PackageAnalyzer.Models;
 using PackageAnalyzer.Services;
+using PackageAnalyzer.Utils;
 using Spectre.Console;
 
 try
@@ -44,11 +44,11 @@ try
     foreach (var project in projectsInfo)
     {
         var tempProject = project;
-        var analysisExists = File.Exists(GetAnalysisFilePath(GetAnalysisResultPath(), tempProject.Name));
+        var analysisExists = File.Exists(PathUtils.GetAnalysisFilePath(PathUtils.GetAnalysisResultPath(), tempProject.Name));
         if (analysisExists)
         {
             Console.WriteLine($"Analysis for project {tempProject.Name} already exists. Loading...");
-            var analysisFilePath = GetAnalysisFilePath(GetAnalysisResultPath(), tempProject.Name);
+            var analysisFilePath = PathUtils.GetAnalysisFilePath(PathUtils.GetAnalysisResultPath(), tempProject.Name);
             var analysisFileContent = await File.ReadAllTextAsync(analysisFilePath);
 
             tempProject = JsonSerializer.Deserialize<ProjectInfo>(analysisFileContent);
@@ -87,20 +87,16 @@ Console.ReadKey();
 
 static Task StoreAnalysis(string projectName, ProjectInfo packages)
 {
-    var analysisResultPath = GetAnalysisResultPath();
+    var analysisResultPath = PathUtils.GetAnalysisResultPath();
     if (!Directory.Exists(analysisResultPath))
     {
         Directory.CreateDirectory(analysisResultPath);
     }
     
-    var analysisFilePath = GetAnalysisFilePath(analysisResultPath, projectName);
+    var analysisFilePath = PathUtils.GetAnalysisFilePath(analysisResultPath, projectName);
     var serializedPackages = JsonSerializer.Serialize(packages, new JsonSerializerOptions { WriteIndented = true });
     return File.WriteAllTextAsync(analysisFilePath, serializedPackages);
 }
-
-static string GetAnalysisResultPath() => Path.Combine(GetAppPath(), "AnalysisResult");
-static string GetAnalysisFilePath(string analysisPath, string projectName) => Path.Combine(analysisPath ,$"{projectName}_Analysis.json");
-static string GetAppPath() => Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? throw new InvalidOperationException("Unable to determine application path.");
 
 static Tree BuildPackageTree(ProjectInfo projectInfo)
 {
