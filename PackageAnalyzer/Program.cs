@@ -7,73 +7,82 @@ using PackageAnalyzer.Models;
 using PackageAnalyzer.Services;
 using Spectre.Console;
 
-Console.WriteLine("Enter solution path:");
-string? solutionPath = Console.ReadLine();
-
-if (string.IsNullOrEmpty(solutionPath))
+try
 {
-    Console.WriteLine("Solution path is required.");
-    return;
-}
+    Console.WriteLine("Enter solution path:");
+    string? solutionPath = Console.ReadLine();
 
-if (!Directory.Exists(solutionPath))
-{
-    Console.WriteLine("Solution path does not exist.");
-    return;
-}
-
-var packageConfigFiles = Directory.GetFiles(solutionPath, "*packages.config", SearchOption.AllDirectories);
-
-var projectsWithPackages = new Dictionary<string, List<PackageInfo>>();
-foreach (var packageFile in packageConfigFiles)
-{
-    var projectName = Path.GetFileNameWithoutExtension(packageFile).Replace("_packages", "");
-    var packageFileContent = await File.ReadAllTextAsync(packageFile);
-    var packages = PackageConfigParser.GetPackages(packageFileContent);
-    
-    projectsWithPackages[projectName] = packages;
-}
-
-foreach (var project in projectsWithPackages)
-{
-    string projectName = project.Key;
-    List<PackageInfo> packages = project.Value;
-    
-    var analysisExists = File.Exists(GetAnalysisFilePath(GetAnalysisResultPath(), project.Key));
-    if (analysisExists)
+    if (string.IsNullOrEmpty(solutionPath))
     {
-        Console.WriteLine($"Analysis for project {project.Key} already exists. Loading...");
-        var analysisFilePath = GetAnalysisFilePath(GetAnalysisResultPath(), project.Key);
-        var analysisFileContent = await File.ReadAllTextAsync(analysisFilePath);
-
-        packages = JsonSerializer.Deserialize<List<PackageInfo>>(analysisFileContent);
+        Console.WriteLine("Solution path is required.");
+        return;
     }
-    else
-    {
-        Console.WriteLine($"Processing project: {projectName}");
 
-        foreach (var package in packages)
+    if (!Directory.Exists(solutionPath))
+    {
+        Console.WriteLine("Solution path does not exist.");
+        return;
+    }
+
+    var packageConfigFiles = Directory.GetFiles(solutionPath, "*packages.config", SearchOption.AllDirectories);
+
+    var projectsWithPackages = new Dictionary<string, List<PackageInfo>>();
+    foreach (var packageFile in packageConfigFiles)
+    {
+        var projectName = Path.GetFileNameWithoutExtension(packageFile).Replace("_packages", "");
+        var packageFileContent = await File.ReadAllTextAsync(packageFile);
+        var packages = PackageConfigParser.GetPackages(packageFileContent);
+
+        projectsWithPackages[projectName] = packages;
+    }
+
+    foreach (var project in projectsWithPackages)
+    {
+        string projectName = project.Key;
+        List<PackageInfo> packages = project.Value;
+
+        var analysisExists = File.Exists(GetAnalysisFilePath(GetAnalysisResultPath(), project.Key));
+        if (analysisExists)
         {
-            var packageIdentity = new PackageIdentity(package.Name, NuGetVersion.Parse(package.Version));
-            var framework = NuGetFramework.ParseFolder(package.TargetFramework);
+            Console.WriteLine($"Analysis for project {project.Key} already exists. Loading...");
+            var analysisFilePath = GetAnalysisFilePath(GetAnalysisResultPath(), project.Key);
+            var analysisFileContent = await File.ReadAllTextAsync(analysisFilePath);
 
-            var processedPackages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-            // Assign transitive dependencies directly
-            package.TransitiveDependencies = await NugetService.GetTransitiveDependencies(
-                packageIdentity,
-                framework,
-                processedPackages);
+            packages = JsonSerializer.Deserialize<List<PackageInfo>>(analysisFileContent);
         }
-        
-        await StoreAnalysis(projectName, packages);
+        else
+        {
+            Console.WriteLine($"Processing project: {projectName}");
+
+            foreach (var package in packages)
+            {
+                var packageIdentity = new PackageIdentity(package.Name, NuGetVersion.Parse(package.Version));
+                var framework = NuGetFramework.ParseFolder(package.TargetFramework);
+
+                var processedPackages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+                // Assign transitive dependencies directly
+                package.TransitiveDependencies = await NugetService.GetTransitiveDependencies(
+                    packageIdentity,
+                    framework,
+                    processedPackages);
+            }
+
+            await StoreAnalysis(projectName, packages);
+        }
+
+        var packageTree = BuildPackageTree(packages);
+        AnsiConsole.Write(packageTree);
+
+        Console.WriteLine($"Finished processing project: {projectName}");
     }
-
-    var packageTree = BuildPackageTree(packages);
-    AnsiConsole.Write(packageTree);
-
-    Console.WriteLine($"Finished processing project: {projectName}");
 }
+catch (Exception ex)
+{
+    Console.WriteLine($"An error occurred: {ex.Message}");
+}
+Console.WriteLine("Press any key to exit...");
+Console.ReadKey();
 
 static Task StoreAnalysis(string projectName, List<PackageInfo> packages)
 {

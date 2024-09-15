@@ -21,11 +21,15 @@ public static class NugetService
 
         var repo = Repository.Factory.GetCoreV3("https://api.nuget.org/v3/index.json");
         var resource = await repo.GetResourceAsync<FindPackageByIdResource>();
+        var cacheContext = new SourceCacheContext();
+        var logger = NullLogger.Instance;
+        
+        // Now that we have a valid version, get the dependency info
         var dependencyInfo = await resource.GetDependencyInfoAsync(
             package.Id,
             package.Version,
-            new SourceCacheContext(),
-            NullLogger.Instance,
+            cacheContext,
+            logger,
             CancellationToken.None);
 
         if (dependencyInfo == null)
@@ -41,18 +45,27 @@ public static class NugetService
 
             foreach (var dependency in dependencyGroup.Packages)
             {
-                var depPackageIdentity = new PackageIdentity(
+                var allVersions = await resource.GetAllVersionsAsync(
                     dependency.Id,
-                    dependency.VersionRange.MinVersion);
+                    cacheContext,
+                    logger,
+                    CancellationToken.None);
 
-                // Create a PackageInfo for this dependency
+                var bestVersion = dependency.VersionRange.FindBestMatch(allVersions);
+
+                if (bestVersion == null)
+                {
+                    Console.WriteLine(
+                        $"Could not find a matching version for dependency {dependency.Id} with version range {dependency.VersionRange?.ToNormalizedString() ?? "Unknown"}");
+                    continue;
+                }
+
+                var depPackageIdentity = new PackageIdentity(dependency.Id, bestVersion);
+
                 var depPackageInfo = new PackageInfo(
                     dependency.Id,
-                    dependency.VersionRange.MinVersion.ToString(),
-                    framework.GetShortFolderName());
-
-                // Recursively get transitive dependencies for this dependency
-                depPackageInfo = depPackageInfo with
+                    bestVersion.ToString(),
+                    framework.GetShortFolderName())
                 {
                     TransitiveDependencies = await GetTransitiveDependencies(
                         depPackageIdentity,
@@ -60,7 +73,6 @@ public static class NugetService
                         processedPackages)
                 };
 
-                // Add the depPackageInfo to the transitive dependencies list
                 transitiveDeps.Add(depPackageInfo);
             }
         }
