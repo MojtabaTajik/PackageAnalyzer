@@ -3,7 +3,7 @@ using PackageAnalyzer.Models;
 
 namespace PackageAnalyzer.Services;
 
-public class PackageConfigParser
+public static class PackageConfigParser
 {
     public static List<PackageInfo> GetPackages(string configContent)
     {

@@ -6,7 +6,7 @@ using NuGet.Protocol.Core.Types;
 
 namespace PackageAnalyzer.Services;
 
-public class NugetService
+public static class NugetService
 {
     public static async Task GetTransitiveDependencies(
         PackageIdentity package,
@@ -35,7 +35,7 @@ public class NugetService
             foreach (var dependency in dependencyGroup.Packages)
             {
                 if (!transitiveDependencies.ContainsKey(dependency.Id))
-                    transitiveDependencies[dependency.Id] = new HashSet<string>();
+                    transitiveDependencies[dependency.Id] = [];
                 transitiveDependencies[dependency.Id].Add(package.Id);
 
                 var depPackage = new PackageIdentity(dependency.Id, dependency.VersionRange.MinVersion);
