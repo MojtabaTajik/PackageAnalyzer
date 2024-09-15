@@ -26,35 +26,38 @@ try
 
     var packageConfigFiles = Directory.GetFiles(solutionPath, "*packages.config", SearchOption.AllDirectories);
 
-    var projectsWithPackages = new Dictionary<string, List<PackageInfo>>();
+    var projectsInfo = new List<ProjectInfo>();
     foreach (var packageFile in packageConfigFiles)
     {
         var projectName = Path.GetFileNameWithoutExtension(packageFile).Replace("_packages", "");
         var packageFileContent = await File.ReadAllTextAsync(packageFile);
         var packages = PackageConfigParser.GetPackages(packageFileContent);
-
-        projectsWithPackages[projectName] = packages;
+        var framework = packages.FirstOrDefault(f => f.TargetFramework != null)?.TargetFramework;
+        
+        var projectInfo = new ProjectInfo(projectName, framework ?? "Unknown")
+        {
+            Packages = packages
+        };
+        projectsInfo.Add(projectInfo);
     }
 
-    foreach (var project in projectsWithPackages)
+    foreach (var project in projectsInfo)
     {
-        string projectName = project.Key;
-        List<PackageInfo> packages = project.Value;
-
-        var analysisExists = File.Exists(GetAnalysisFilePath(GetAnalysisResultPath(), project.Key));
+        var tempProject = project;
+        var analysisExists = File.Exists(GetAnalysisFilePath(GetAnalysisResultPath(), tempProject.Name));
         if (analysisExists)
         {
-            Console.WriteLine($"Analysis for project {project.Key} already exists. Loading...");
-            var analysisFilePath = GetAnalysisFilePath(GetAnalysisResultPath(), project.Key);
+            Console.WriteLine($"Analysis for project {tempProject.Name} already exists. Loading...");
+            var analysisFilePath = GetAnalysisFilePath(GetAnalysisResultPath(), tempProject.Name);
             var analysisFileContent = await File.ReadAllTextAsync(analysisFilePath);
 
-            packages = JsonSerializer.Deserialize<List<PackageInfo>>(analysisFileContent);
+            tempProject = JsonSerializer.Deserialize<ProjectInfo>(analysisFileContent);
         }
         else
         {
-            Console.WriteLine($"Processing project: {projectName}");
+            Console.WriteLine($"Processing project: {tempProject.Name}");
 
-            foreach (var package in packages)
+            foreach (var package in tempProject.Packages)
             {
                 var packageIdentity = new PackageIdentity(package.Name, NuGetVersion.Parse(package.Version));
                 var framework = NuGetFramework.ParseFolder(package.TargetFramework);
@@ -68,13 +71,11 @@ try
                     processedPackages);
             }
 
-            await StoreAnalysis(projectName, packages);
+            await StoreAnalysis(tempProject.Name, tempProject);
         }
 
-        var packageTree = BuildPackageTree(packages);
+        var packageTree = BuildPackageTree(tempProject);
         AnsiConsole.Write(packageTree);
-
-        Console.WriteLine($"Finished processing project: {projectName}");
     }
 }
 catch (Exception ex)
@@ -84,7 +85,7 @@ catch (Exception ex)
 Console.WriteLine("Press any key to exit...");
 Console.ReadKey();
 
-static Task StoreAnalysis(string projectName, List<PackageInfo> packages)
+static Task StoreAnalysis(string projectName, ProjectInfo packages)
 {
     var analysisResultPath = GetAnalysisResultPath();
     if (!Directory.Exists(analysisResultPath))
@@ -101,13 +102,12 @@ static string GetAnalysisResultPath() => Path.Combine(GetAppPath(), "AnalysisRes
 static string GetAnalysisFilePath(string analysisPath, string projectName) => Path.Combine(analysisPath ,$"{projectName}_Analysis.json");
 static string GetAppPath() => Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? throw new InvalidOperationException("Unable to determine application path.");
 
-static Tree BuildPackageTree(List<PackageInfo> packages)
+static Tree BuildPackageTree(ProjectInfo projectInfo)
 {
-    var root = new Tree("Packages");
+    var root = new Tree($"{projectInfo.Name} [grey]({projectInfo.Framework})[/]");
 
-    foreach (var package in packages)
+    foreach (var packageNode in projectInfo.Packages.Select(BuildPackageNode))
     {
-        var packageNode = BuildPackageNode(package);
         root.AddNode(packageNode);
     }
 
