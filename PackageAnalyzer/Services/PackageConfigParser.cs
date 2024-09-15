@@ -5,7 +5,7 @@ namespace PackageAnalyzer.Services;
 
 public class PackageConfigParser
 {
-    public List<PackageInfo> GetPackages(string configContent)
+    public static List<PackageInfo> GetPackages(string configContent)
     {
         if (string.IsNullOrEmpty(configContent))
         {
@@ -24,7 +24,7 @@ public class PackageConfigParser
         return packages;
     }
     
-    private string GetAttributeValue(XElement element, string attributeName)
+    private static string GetAttributeValue(XElement element, string attributeName)
     {
         return element.Attribute(attributeName)?.Value ?? string.Empty;
     }
