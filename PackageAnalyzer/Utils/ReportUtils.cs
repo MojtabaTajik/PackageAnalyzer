@@ -5,9 +5,9 @@ namespace PackageAnalyzer.Utils;
 
 public static class ReportUtils
 {
-    public static void PrintPackageReport1(List<ProjectInfo> projects)
+    public static void PrintPackagesByProjectReport(List<ProjectInfo> projects)
     {
-        var root = new Tree("Package Report");
+        var root = new Tree("[bold red]Packages by Project[/]");
 
         foreach (var project in projects)
         {
@@ -34,7 +34,7 @@ public static class ReportUtils
         AnsiConsole.Write(root);
     }
 
-    public static void PrintPackageReport2(List<ProjectInfo> projects)
+    public static void PrintProjectByPackagesReport(List<ProjectInfo> projects)
     {
         // Dictionary to group packages by name across all projects
         var packageGroups = new Dictionary<string, List<(string ProjectName, string Version)>>();
@@ -57,8 +57,8 @@ public static class ReportUtils
         }
 
         // Create root node for the report
-        var root = new Tree("Package Report");
-
+        var root = new Tree("[bold red]Projects by Package[/]");
+        
         // Loop through each package group and add to the tree
         foreach (var packageGroup in packageGroups)
         {

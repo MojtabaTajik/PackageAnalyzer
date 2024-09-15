@@ -32,6 +32,8 @@ try
         }
     }
     
+    ReportUtils.PrintPackagesByProjectReport(projectsInfo);
+    ReportUtils.PrintProjectByPackagesReport(projectsInfo);
     ReportUtils.PrintAnomaliesReport(projectsInfo);
 }
 catch (Exception ex)
