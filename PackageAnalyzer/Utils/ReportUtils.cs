@@ -13,20 +13,16 @@ public static class ReportUtils
         {
             var projectNode = root.AddNode($"[blue]{project.Name}[/] ({project.Framework})");
 
-            if (project.Packages != null)
+            if (project.Packages == null) continue;
+            foreach (var package in project.Packages)
             {
-                foreach (var package in project.Packages)
-                {
-                    var packageNode = projectNode.AddNode($"[green]{package.Name}[/] [yellow]{package.Version}[/]");
+                var packageNode = projectNode.AddNode($"[green]{package.Name}[/] [yellow]{package.Version}[/]");
 
-                    if (package.TransitiveDependencies != null)
-                    {
-                        foreach (var transitiveDependency in package.TransitiveDependencies)
-                        {
-                            packageNode.AddNode(
-                                $"[green]{transitiveDependency.Name}[/] [yellow]{transitiveDependency.Version}[/]");
-                        }
-                    }
+                if (package.TransitiveDependencies == null) continue;
+                foreach (var transitiveDependency in package.TransitiveDependencies)
+                {
+                    packageNode.AddNode(
+                        $"[green]{transitiveDependency.Name}[/] [yellow]{transitiveDependency.Version}[/]");
                 }
             }
         }
@@ -42,17 +38,15 @@ public static class ReportUtils
         // Iterate through all projects and their packages
         foreach (var project in projects)
         {
-            if (project.Packages != null)
+            if (project.Packages == null) continue;
+            foreach (var package in project.Packages)
             {
-                foreach (var package in project.Packages)
+                if (!packageGroups.ContainsKey(package.Name))
                 {
-                    if (!packageGroups.ContainsKey(package.Name))
-                    {
-                        packageGroups[package.Name] = new List<(string, string)>();
-                    }
-
-                    packageGroups[package.Name].Add((project.Name, package.Version));
+                    packageGroups[package.Name] = new List<(string, string)>();
                 }
+
+                packageGroups[package.Name].Add((project.Name, package.Version));
             }
         }
 
@@ -90,17 +84,15 @@ public static class ReportUtils
         // Iterate through all projects and their packages to group them by package name
         foreach (var project in projects)
         {
-            if (project.Packages != null)
+            if (project.Packages == null) continue;
+            foreach (var package in project.Packages)
             {
-                foreach (var package in project.Packages)
+                if (!packageGroups.ContainsKey(package.Name))
                 {
-                    if (!packageGroups.ContainsKey(package.Name))
-                    {
-                        packageGroups[package.Name] = new List<(string, string)>();
-                    }
-
-                    packageGroups[package.Name].Add((project.Name, package.Version));
+                    packageGroups[package.Name] = new List<(string, string)>();
                 }
+
+                packageGroups[package.Name].Add((project.Name, package.Version));
             }
         }
 
