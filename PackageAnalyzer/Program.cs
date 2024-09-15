@@ -30,14 +30,12 @@ try
     foreach (var project in projectsInfo)
     {
         var tempProject = project;
-        var analysisExists = File.Exists(PathUtils.GetAnalysisFilePath(PathUtils.GetAnalysisResultPath(), tempProject.Name));
-        if (analysisExists)
+        var cacheExists = AnalysisCache.CacheExists(tempProject.Name);
+        if (cacheExists)
         {
             Console.WriteLine($"Analysis for project {tempProject.Name} already exists. Loading...");
-            var analysisFilePath = PathUtils.GetAnalysisFilePath(PathUtils.GetAnalysisResultPath(), tempProject.Name);
-            var analysisFileContent = await File.ReadAllTextAsync(analysisFilePath);
-
-            tempProject = JsonSerializer.Deserialize<ProjectInfo>(analysisFileContent);
+            var cachedAnalysis = await AnalysisCache.GetAnalysis(tempProject.Name);
+            tempProject = JsonSerializer.Deserialize<ProjectInfo>(cachedAnalysis);
         }
         else
         {
@@ -57,7 +55,7 @@ try
                     processedPackages);
             }
 
-            await StoreAnalysis(tempProject.Name, tempProject);
+            await AnalysisCache.StoreAnalysis(tempProject.Name, tempProject);
         }
 
         var packageTree = BuildPackageTree(tempProject);
@@ -70,19 +68,6 @@ catch (Exception ex)
 }
 Console.WriteLine("Press any key to exit...");
 Console.ReadKey();
-
-static Task StoreAnalysis(string projectName, ProjectInfo packages)
-{
-    var analysisResultPath = PathUtils.GetAnalysisResultPath();
-    if (!Directory.Exists(analysisResultPath))
-    {
-        Directory.CreateDirectory(analysisResultPath);
-    }
-    
-    var analysisFilePath = PathUtils.GetAnalysisFilePath(analysisResultPath, projectName);
-    var serializedPackages = JsonSerializer.Serialize(packages, new JsonSerializerOptions { WriteIndented = true });
-    return File.WriteAllTextAsync(analysisFilePath, serializedPackages);
-}
 
 static Tree BuildPackageTree(ProjectInfo projectInfo)
 {
