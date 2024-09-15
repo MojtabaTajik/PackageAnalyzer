@@ -77,59 +77,70 @@ public static class ReportUtils
         AnsiConsole.Write(root);
     }
 
-    public static void PrintAnomaliesReport(List<ProjectInfo> projects)
+public static void PrintAnomaliesReport(List<ProjectInfo> projects)
+{
+    var packageGroups = new Dictionary<string, List<(string ProjectName, string Version)>>();
+
+    // Iterate through all projects and their packages to group them by package name
+    foreach (var project in projects)
     {
-        var packageGroups = new Dictionary<string, List<(string ProjectName, string Version)>>();
-
-        // Iterate through all projects and their packages to group them by package name
-        foreach (var project in projects)
+        if (project.Packages == null) continue;
+        foreach (var package in project.Packages)
         {
-            if (project.Packages == null) continue;
-            foreach (var package in project.Packages)
+            if (!packageGroups.ContainsKey(package.Name))
             {
-                if (!packageGroups.ContainsKey(package.Name))
-                {
-                    packageGroups[package.Name] = new List<(string, string)>();
-                }
-
-                packageGroups[package.Name].Add((project.Name, package.Version));
+                packageGroups[package.Name] = new List<(string, string)>();
             }
-        }
 
-        // List to hold anomalies
-        var anomalies = new List<string>();
-
-        foreach (var packageGroup in packageGroups)
-        {
-            var mostCommonVersion = packageGroup.Value
-                .GroupBy(x => x.Version)
-                .OrderByDescending(g => g.Count())
-                .First()
-                .Key;
-
-            foreach (var projectInfo in packageGroup.Value)
-            {
-                // Check if the version is an anomaly (not the most common version)
-                if (projectInfo.Version != mostCommonVersion)
-                {
-                    anomalies.Add(
-                        $"[yellow]{projectInfo.ProjectName}[/] upgrade [green]{packageGroup.Key}[/] to [red]{mostCommonVersion}[/] to fix anomaly.");
-                }
-            }
-        }
-
-        // Print anomalies
-        if (anomalies.Count > 0)
-        {
-            AnsiConsole.MarkupLine("[bold red]Anomalies Found[/]");
-            foreach (var anomaly in anomalies)
-            {
-                AnsiConsole.MarkupLine($"[white]{anomaly}[/]");
-            }
-        }
-        else
-        {
-            AnsiConsole.MarkupLine("[bold green]No anomalies found![/]");
+            packageGroups[package.Name].Add((project.Name, package.Version));
         }
     }
+
+    // Dictionary to hold anomalies grouped by project
+    var projectAnomalies = new Dictionary<string, List<string>>();
+
+    foreach (var packageGroup in packageGroups)
+    {
+        var mostCommonVersion = packageGroup.Value
+            .GroupBy(x => x.Version)
+            .OrderByDescending(g => g.Count())
+            .First()
+            .Key;
+
+        foreach (var projectInfo in packageGroup.Value)
+        {
+            // Check if the version is an anomaly (not the most common version)
+            if (projectInfo.Version != mostCommonVersion)
+            {
+                var anomaly = $"upgrade [green]{packageGroup.Key}[/] to [red]{mostCommonVersion}[/] to fix anomaly.";
+                
+                // Group anomaly under the project name
+                if (!projectAnomalies.ContainsKey(projectInfo.ProjectName))
+                {
+                    projectAnomalies[projectInfo.ProjectName] = new List<string>();
+                }
+
+                projectAnomalies[projectInfo.ProjectName].Add(anomaly);
+            }
+        }
+    }
+
+    // Print anomalies grouped by project
+    if (projectAnomalies.Count > 0)
+    {
+        AnsiConsole.MarkupLine("[bold red]Anomalies Found[/]");
+        foreach (var project in projectAnomalies)
+        {
+            AnsiConsole.MarkupLine($"[yellow]Project: {project.Key}[/]");
+            foreach (var anomaly in project.Value)
+            {
+                AnsiConsole.MarkupLine($"  - {anomaly}");
+            }
+        }
+    }
+    else
+    {
+        AnsiConsole.MarkupLine("[bold green]No anomalies found![/]");
+    }
+}
 }
