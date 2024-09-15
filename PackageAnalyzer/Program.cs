@@ -24,17 +24,16 @@ try
         return;
     }
 
-    var packageConfigFiles = Directory.GetFiles(solutionPath, "*packages.config", SearchOption.AllDirectories);
+    var packageConfigFiles = PackageConfigSearcher.GetPackageConfigFiles(solutionPath);
 
     var projectsInfo = new List<ProjectInfo>();
     foreach (var packageFile in packageConfigFiles)
     {
-        var projectName = Path.GetFileNameWithoutExtension(packageFile).Replace("_packages", "");
-        var packageFileContent = await File.ReadAllTextAsync(packageFile);
+        var packageFileContent = await File.ReadAllTextAsync(packageFile.PackageConfigPath);
         var packages = PackageConfigParser.GetPackages(packageFileContent);
         var framework = packages.FirstOrDefault(f => f.TargetFramework != null)?.TargetFramework;
         
-        var projectInfo = new ProjectInfo(projectName, framework ?? "Unknown")
+        var projectInfo = new ProjectInfo(packageFile.ProjectName, framework ?? "Unknown")
         {
             Packages = packages
         };
