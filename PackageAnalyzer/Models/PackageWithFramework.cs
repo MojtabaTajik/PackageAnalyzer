@@ -4,7 +4,7 @@ using NuGet.Versioning;
 
 namespace PackageAnalyzer.Models;
 
-record PackageWithFramework
+public record PackageWithFramework
 {
     public PackageIdentity Identity { get; }
     public NuGetFramework Framework { get; }

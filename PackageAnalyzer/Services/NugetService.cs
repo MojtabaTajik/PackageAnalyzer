@@ -3,26 +3,33 @@ using NuGet.Frameworks;
 using NuGet.Packaging.Core;
 using NuGet.Protocol;
 using NuGet.Protocol.Core.Types;
+using PackageAnalyzer.Models;
 
 namespace PackageAnalyzer.Services;
 
 public static class NugetService
 {
-    public static async Task GetTransitiveDependencies(
+    public static async Task<List<PackageInfo>> GetTransitiveDependencies(
         PackageIdentity package,
         NuGetFramework framework,
-        HashSet<string> processedPackages,
-        Dictionary<string, HashSet<string>> transitiveDependencies)
+        HashSet<string> processedPackages)
     {
+        var transitiveDeps = new List<PackageInfo>();
+
         if (!processedPackages.Add(package.Id))
-            return;
+            return transitiveDeps;
 
         var repo = Repository.Factory.GetCoreV3("https://api.nuget.org/v3/index.json");
         var resource = await repo.GetResourceAsync<FindPackageByIdResource>();
-        var dependencyInfo = await resource.GetDependencyInfoAsync(package.Id, package.Version, new SourceCacheContext(), NullLogger.Instance, CancellationToken.None);
+        var dependencyInfo = await resource.GetDependencyInfoAsync(
+            package.Id,
+            package.Version,
+            new SourceCacheContext(),
+            NullLogger.Instance,
+            CancellationToken.None);
 
         if (dependencyInfo == null)
-            return;
+            return transitiveDeps;
 
         foreach (var dependencyGroup in dependencyInfo.DependencyGroups)
         {
@@ -31,16 +38,33 @@ public static class NugetService
             {
                 continue;
             }
-            
+
             foreach (var dependency in dependencyGroup.Packages)
             {
-                if (!transitiveDependencies.ContainsKey(dependency.Id))
-                    transitiveDependencies[dependency.Id] = [];
-                transitiveDependencies[dependency.Id].Add(package.Id);
+                var depPackageIdentity = new PackageIdentity(
+                    dependency.Id,
+                    dependency.VersionRange.MinVersion);
 
-                var depPackage = new PackageIdentity(dependency.Id, dependency.VersionRange.MinVersion);
-                await GetTransitiveDependencies(depPackage, framework, processedPackages, transitiveDependencies);
+                // Create a PackageInfo for this dependency
+                var depPackageInfo = new PackageInfo(
+                    dependency.Id,
+                    dependency.VersionRange.MinVersion.ToString(),
+                    framework.GetShortFolderName());
+
+                // Recursively get transitive dependencies for this dependency
+                depPackageInfo = depPackageInfo with
+                {
+                    TransitiveDependencies = await GetTransitiveDependencies(
+                        depPackageIdentity,
+                        framework,
+                        processedPackages)
+                };
+
+                // Add the depPackageInfo to the transitive dependencies list
+                transitiveDeps.Add(depPackageInfo);
             }
         }
+
+        return transitiveDeps;
     }
 }

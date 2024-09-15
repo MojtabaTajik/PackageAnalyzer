@@ -1,4 +1,8 @@
-﻿using NuGet.Versioning;
+﻿using System.Reflection;
+using System.Text.Json;
+using NuGet.Frameworks;
+using NuGet.Packaging.Core;
+using NuGet.Versioning;
 using PackageAnalyzer.Models;
 using PackageAnalyzer.Services;
 
@@ -17,36 +21,51 @@ if (!Directory.Exists(solutionPath))
     return;
 }
 
-var packageConfigFiles = Directory.GetFiles(solutionPath, "packages.config", SearchOption.AllDirectories);
+var packageConfigFiles = Directory.GetFiles(solutionPath, "*packages.config", SearchOption.AllDirectories);
 
 var projectsWithPackages = new Dictionary<string, List<PackageInfo>>();
 foreach (var packageFile in packageConfigFiles)
 {
     var projectName = Path.GetFileNameWithoutExtension(packageFile).Replace("_packages", "");
-    var packageFileContent = File.ReadAllText(packageFile);
+    var packageFileContent = await File.ReadAllTextAsync(packageFile);
     var packages = PackageConfigParser.GetPackages(packageFileContent);
     
     projectsWithPackages[projectName] = packages;
 }
 
-var allPackages = new Dictionary<string, HashSet<NuGetVersion>>();
-var transitiveDependencies = new Dictionary<string, HashSet<string>>();
 foreach (var project in projectsWithPackages)
 {
     string projectName = project.Key;
     List<PackageInfo> packages = project.Value;
-    
+
     Console.WriteLine($"Processing project: {projectName}");
-    var directPackages = packages.Select(p => new PackageWithFramework(p.Name, p.Version, p.TargetFramework)).ToList();
-    var processedPackages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-    foreach (var package in directPackages)
+    foreach (var package in packages)
     {
-        if (!allPackages.ContainsKey(package.Identity.Id))
-            allPackages[package.Identity.Id] = new HashSet<NuGetVersion>();
-        allPackages[package.Identity.Id].Add(package.Identity.Version);
+        var packageIdentity = new PackageIdentity(package.Name, NuGetVersion.Parse(package.Version));
+        var framework = NuGetFramework.ParseFolder(package.TargetFramework);
 
-        await NugetService.GetTransitiveDependencies(package.Identity, package.Framework, processedPackages, transitiveDependencies);
+        var processedPackages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        // Assign transitive dependencies directly
+        package.TransitiveDependencies = await NugetService.GetTransitiveDependencies(
+            packageIdentity,
+            framework,
+            processedPackages);
     }
+
+    // Store the analysis including transitive dependencies
+    await StoreAnalysis(projectName, packages);
+
     Console.WriteLine($"Finished processing project: {projectName}");
 }
+
+static Task StoreAnalysis(string projectName, List<PackageInfo> packages)
+{
+    var analysisFilePath = GetAnalysisFilePath(projectName);
+    var serializedPackages = JsonSerializer.Serialize(packages, new JsonSerializerOptions { WriteIndented = true });
+    return File.WriteAllTextAsync(analysisFilePath, serializedPackages);
+}
+
+static string GetAnalysisFilePath(string projectName) => Path.Combine(GetAppPath(), $"{projectName}_Analysis.json");
+static string GetAppPath() => Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? throw new InvalidOperationException("Unable to determine application path.");
