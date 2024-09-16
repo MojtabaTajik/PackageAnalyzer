@@ -52,13 +52,9 @@ This approach allows PackageAnalyzer to provide fast, accurate results while min
     * Helps identify inconsistencies in package versions across projects
     * Useful for planning version alignment and identifying potential conflicts
 
-![PackageByProject](content/PackageByProject.png)
-
 3. **Anomalies Report**
 
     * Focuses on package version inconsistencies across projects
     * Lists project names and package versions that differ from the majority
     * Helps quickly identify areas that need attention for successful integration
     * Crucial for planning your monolith migration strategy
-
-![Anomalies](/content/AnomaliesReport.png)
